@@ -14,233 +14,86 @@ function main(){
         return;
     }
 
-    const vsSource = `
-    attribute vec4 aVertexPosition;
-    attribute vec2 aTextureCoord;
+    var vsSource = 'v1.glsl';
+    var fsSource = 'fr1.glsl';
 
-    uniform mat4 uModelViewMatrix;
-    uniform mat4 uProjectionMatrix;
+    // Init shader returns a promise
+    var shaderProgram = initShaderProgram(gl, vsSource, fsSource);
 
-    varying highp vec2 vTextureCoord;
+    // Wait for init Shader before loading
+    Promise.all([shaderProgram]).then(program => {
+        const shaderProgram = program[0];
+        const programInfo = {
+            program: shaderProgram,
+            attribLocations: {
+                vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
+                textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
+            },
+            uniformLocations: {
+                projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
+                modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
+                uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                resolution: gl.getUniformLocation(shaderProgram, 'resolution'),
+                time: gl.getUniformLocation(shaderProgram, 'time'),
+            },
+        };
+        const buffers =  initBuffers(gl);
+        var texture = loadTexture(gl, "jeeza.jpg");
+        var copyVideo = false;
+        var video = setupVideo("vid2.mp4", copyVideo);
 
-    void main() {
-      gl_Position = uProjectionMatrix * uModelViewMatrix * aVertexPosition;
-      vTextureCoord = aTextureCoord;
-    }
-  `;
+        var then = 0.0;
+        var d = new Date;
+        var time = 0;
 
-    const fsSource = `
-precision mediump float;
-   varying highp vec2 vTextureCoord;
+        function render(now) {
+            now *= 0.001;  // convert to seconds
+            const deltaTime = now - then;
+            then = now;
+            d = new Date;
 
-    uniform sampler2D uSampler;
+            if (true){
+                updateTexture(gl, texture, video);
+            }
 
-uniform vec2 resolution; 
-uniform int time;
-
-
-const int MAX_MARCHING_STEPS = 255;
-const float MIN_DIST = 0.0;
-const float MAX_DIST = 100.0;
-const float EPSILON = 0.0001;
-
-float sphereSDF(vec3 samplePoint) {
-    return length(samplePoint) - 1.0;
-}
-
-float cubeSDF(vec3 p){
-vec3 d = abs(p)-vec3(1.0, 1.0, 1.0);
-
-float insideDistance = min(max(d.x, max(d.y, d.z)), 0.0);
-
-float outsideDistance = length(max(d, 0.0));
-
-return insideDistance + outsideDistance;
-}
-
-float sdfTorus(vec3 p, vec2 t){
-return length( vec2 (length (p.xz)-t.x, p.y)) - t.y;
-}
-
-float sdfPlane(vec3 p){
-return p.y;
-}
-
-float sceneSDF1(vec3 samplePoint){
- return max (sphereSDF(samplePoint/1.2) *1.2, 1.0 * cubeSDF(samplePoint)*1.2);
-}
-
-float sceneSDF2(vec3 samplePoint){
- return sphereSDF(samplePoint/1.2);
-}
-
-float sceneSDF(vec3 samplePoint){
- mat3 rotate = mat3(
-1.0, 0.0, 0.0,
-0.0, cos(float(time)  * (2.0 * 3.14)), -sin(float(time) * (2.0 * 3.14)),
-0.0, sin(float(time)  * (2.0 * 3.14)), cos(float(time)  * (2.0 * 3.14))
-);
-return min (
-max (sdfTorus((samplePoint + vec3(0.0, -0.25, 0.0))* rotate , vec2(0.3 + (0.3 * (1.0+ sin(float(time)/200.0))), 0.1)), -cubeSDF(samplePoint -  vec3(0.0,- 0.50, -1.0))),
-sdfPlane(samplePoint * vec3(0.0, float(time), float(time))));
-//return sdfTorus(samplePoint*rotate, vec2(0.3, 0.1));
-}
-
-
-float shortestDistanceToSurface(vec3 eye, vec3 marchingDirection, float start, float end){
-float depth = start;
-for (int i = 0; i < MAX_MARCHING_STEPS; i++){
-float dist = sceneSDF(eye+depth * marchingDirection);
-if (dist < EPSILON){
-return depth;
-}
-depth += dist;
-if (depth >= end){
-return end;
-}
-}
-return end;
-}
-
-vec3 rayDirection(float fieldOfView, vec2 size, vec2 fragCoord){
-vec2 xy = fragCoord - size / 2.0;
-float z = size.y / tan(radians(fieldOfView)/ 2.0);
-return normalize(vec3(xy, -z));
-}
-
-vec3 estimateNormal(vec3 p) {
-    return normalize(vec3(
-        sceneSDF(vec3(p.x + EPSILON, p.y, p.z)) - sceneSDF(vec3(p.x - EPSILON, p.y, p.z)),
-        sceneSDF(vec3(p.x, p.y + EPSILON, p.z)) - sceneSDF(vec3(p.x, p.y - EPSILON, p.z)),
-        sceneSDF(vec3(p.x, p.y, p.z  + EPSILON)) - sceneSDF(vec3(p.x, p.y, p.z - EPSILON))
-    ));
-}
-
-vec3 phongContribForLight(vec3 k_d, vec3 k_s, float alpha, vec3 p, vec3 eye,
-                          vec3 lightPos, vec3 lightIntensity) {
-    vec3 N = estimateNormal(p);
-    vec3 L = normalize(lightPos - p);
-    vec3 V = normalize(eye - p);
-    vec3 R = normalize(reflect(-L, N));
-    
-    float dotLN = dot(L, N);
-    float dotRV = dot(R, V);
-    
-    if (dotLN < 0.0) {
-        // Light not visible from this point on the surface
-        return vec3(0.0, 0.0, 0.0);
-    }
-    
-    if (dotRV < 0.0) {
-        // Light reflection in opposite direction as viewer, apply only diffuse
-        // component
-        return lightIntensity * (k_d * dotLN);
-    }
-    return lightIntensity * (k_d * dotLN + k_s * pow(dotRV, alpha));
-}
-
-
-vec3 phongIllumination(vec3 k_a, vec3 k_d, vec3 k_s, float alpha, vec3 p, vec3 eye) {
-    const vec3 ambientLight = 0.5 * vec3(1.0, 1.0, 1.0);
-    vec3 color = ambientLight * k_a;
-    
-    vec3 light1Pos = vec3(4.0 * sin(float(time)/200.0),
-                          2.0,
-                          4.0 * cos(float(time)/200.0));
-    vec3 light1Intensity = vec3(0.4, 0.4, 0.4);
-    
-    color += phongContribForLight(k_d, k_s, alpha, p, eye,
-                                  light1Pos,
-                                  light1Intensity);
-    return color;
-}
-
-void main() {
-vec3 dir = rayDirection(45.0, resolution, gl_FragCoord.xy);
-vec3 eye = vec3(0.0, 0.5, 5.0);
-float dist = shortestDistanceToSurface(eye, dir, MIN_DIST, MAX_DIST);
-if (dist > MAX_DIST - EPSILON){
-    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
-return;
-}
-
-vec3 p = eye + dist * dir;
-vec3 K_a = vec3((sin(dist) + 1.0)/2.0, 0.2, (cos(dist) + 1.0)/2.0);
-
-vec3 K_d = texture2D(uSampler, vTextureCoord).xyz;
-vec3 K_s = vec3(1.0, 1.0, 1.0);
-float shininess = 2.0;
-
-vec3 color = phongIllumination(K_a, K_d, K_s, shininess, p, eye);
-gl_FragColor = vec4(color, 1.0) ;
-    }
-  `;
-
-    const shaderProgram = initShaderProgram(gl, vsSource, fsSource);
-
-    const programInfo = {
-        program: shaderProgram,
-        attribLocations: {
-            vertexPosition: gl.getAttribLocation(shaderProgram, 'aVertexPosition'),
-            textureCoord: gl.getAttribLocation(shaderProgram, 'aTextureCoord'),
-        },
-        uniformLocations: {
-            projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
-            modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
-            uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
-            resolution: gl.getUniformLocation(shaderProgram, 'resolution'),
-            time: gl.getUniformLocation(shaderProgram, 'time'),
-        },
-    };
-
-    const buffers =  initBuffers(gl);
-    var texture = loadTexture(gl, "jeeza.jpg");
-    var copyVideo = false;
-    var video = setupVideo("vid.mp4", copyVideo);
-    console.log(texture);
-
-    var then = 0.0;
-    var d = new Date;
-    var time = 0;
-
-    function render(now) {
-        now *= 0.001;  // convert to seconds
-        const deltaTime = now - then;
-        then = now;
-        d = new Date;
-
-        if (true){
-            updateTexture(gl, texture, video);
+            drawScene(gl, programInfo, buffers, texture, d);
+            requestAnimationFrame(render);
         }
-
-        drawScene(gl, programInfo, buffers, texture, d);
         requestAnimationFrame(render);
-    }
-    requestAnimationFrame(render);
+    });
 }
 
 //
 // Initialize a shader program, so WebGL knows how to draw our data
 //
 function initShaderProgram(gl, vsSource, fsSource) {
-  const vertexShader = loadShader(gl, gl.VERTEX_SHADER, vsSource);
-  const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, fsSource);
+    return  Promise.all([fetchShaderText('v1.glsl'), fetchShaderText('fr1.glsl')]).then(values =>{
 
-  // Create the shader program
+        const vertexShader = loadShader(gl, gl.VERTEX_SHADER, values[0]);
+        const fragmentShader = loadShader(gl, gl.FRAGMENT_SHADER, values[1]);
 
-  const shaderProgram = gl.createProgram();
-  gl.attachShader(shaderProgram, vertexShader);
-  gl.attachShader(shaderProgram, fragmentShader);
-  gl.linkProgram(shaderProgram);
+        // Create the shader program
 
-  // If creating the shader program failed, alert
+        const shaderProgram = gl.createProgram();
+        gl.attachShader(shaderProgram, vertexShader);
+        gl.attachShader(shaderProgram, fragmentShader);
+        gl.linkProgram(shaderProgram);
 
-  if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
-    alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
-    return null;
-  }
+        // If creating the shader program failed, alert
 
-  return shaderProgram;
+        if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+            alert('Unable to initialize the shader program: ' + gl.getProgramInfoLog(shaderProgram));
+            return null;
+        }
+
+        return shaderProgram;
+    }); 
+}
+
+function fetchShaderText(name){
+    return fetch(name)
+        .then (response => response.text())
+        .then (text => text)
 }
 
 //
