@@ -4,6 +4,6 @@ version = "0.1.0"
 authors = ["cynlic <montgomeryh@kenyon.edu>"]
 
 [dependencies]
-rocket = "*"
+rocket = "0.3.3"
 rocket_codegen = "*"
 maud = {version = "*", features = ["rocket"]}
