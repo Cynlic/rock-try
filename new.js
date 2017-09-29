@@ -1,5 +1,7 @@
 main();
 
+var copyVideo = false;
+
 function main(){
 
     const canvas = document.querySelector("#glCanvas");
@@ -39,19 +41,16 @@ function main(){
         };
         const buffers =  initBuffers(gl);
         var texture = loadTexture(gl, "jeeza.jpg");
-        var copyVideo = false;
-        var video = setupVideo("vid2.mp4", copyVideo);
-
+        var video = setupVideo("vid2.mp4");
         var then = 0.0;
-        var time = 0;
+        var time = 1;
 
         function render(now) {
             now *= 0.001;  // convert to seconds
             const deltaTime = now - then;
             then = now;
             time += 1;
-
-            if (true){
+            if (copyVideo){
                 updateTexture(gl, texture, video);
             }
 

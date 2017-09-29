@@ -1,5 +1,5 @@
 
-function setupVideo(url, copyVideo) {
+function setupVideo(url) {
     const video = document.createElement('video');
 
     var playing = false;

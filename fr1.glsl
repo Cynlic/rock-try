@@ -7,7 +7,7 @@ uniform vec2 resolution;
 uniform int time;
 
 
-const int MAX_MARCHING_STEPS = 255;
+const int MAX_MARCHING_STEPS = 200;
 const float MIN_DIST = 0.0;
 const float MAX_DIST = 100.0;
 const float EPSILON = 0.0001;
@@ -35,6 +35,16 @@ float cubeSDF(vec3 p){
 float sdfTorus(vec3 p, vec2 t){
   return length( vec2 (length (p.xz)-t.x, p.y)) - t.y;
 }
+/*
+float  displace(vec3 v){
+  return (sin(1.0*v.x)*sin(2.0*v.y)*sin(3.0*v.z));
+}
+
+float displaceT(vec3 p, vec2 t){
+  float d1 = sdfTorus(p, t);
+  float d2 = displace(p);
+  return  d2*3.0*sin(float(time)/20.0) + d1*3.0*abs(cos(float(time)/20.0));
+  }*/
 
 vec3 displace(vec3 v){
   return vec3(sin(RATE/4.0*v.x), sin(RATE/4.0*v.y), sin(RATE/4.0*v.z));
