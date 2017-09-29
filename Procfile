@@ -1,1 +1,1 @@
-web: ROCKET_PORT=$PORT ROCKET_ENV=prod ./target/release/debug/rocktry
+web: ROCKET_PORT=$PORT ROCKET_ENV=prod ./target/release/rocktry
