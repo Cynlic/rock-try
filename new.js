@@ -43,20 +43,19 @@ function main(){
         var video = setupVideo("vid2.mp4", copyVideo);
 
         var then = 0.0;
-        var d = new Date;
         var time = 0;
 
         function render(now) {
             now *= 0.001;  // convert to seconds
             const deltaTime = now - then;
             then = now;
-            d = new Date;
+            time += 1;
 
             if (true){
                 updateTexture(gl, texture, video);
             }
 
-            drawScene(gl, programInfo, buffers, texture, d);
+            drawScene(gl, programInfo, buffers, texture, time);
             requestAnimationFrame(render);
         }
         requestAnimationFrame(render);
@@ -178,7 +177,7 @@ function initBuffers(gl) {
     };
 }
 
-function drawScene(gl, programInfo, buffers, texture, date) {
+function drawScene(gl, programInfo, buffers, texture, time) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
   gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -275,7 +274,7 @@ function drawScene(gl, programInfo, buffers, texture, date) {
 
     
     gl.uniform2fv(programInfo.uniformLocations.resolution, [window.innerWidth, window.innerHeight]);
-    gl.uniform1i(programInfo.uniformLocations.time, date.getMilliseconds());
+    gl.uniform1i(programInfo.uniformLocations.time, time);
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, buffers.indices);
 
     // Tell WebGL we want to affect texture unit 0

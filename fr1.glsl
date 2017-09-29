@@ -11,11 +11,12 @@ const int MAX_MARCHING_STEPS = 255;
 const float MIN_DIST = 0.0;
 const float MAX_DIST = 100.0;
 const float EPSILON = 0.0001;
+const float RATE = 20.0;
 
 mat3 rotate = mat3(
                    1.0, 0.0, 0.0,
-                   0.0, cos(float(time)  * (2.0 * 3.14)), -sin(float(time) * (2.0 * 3.14)),
-                   0.0, sin(float(time)  * (2.0 * 3.14)), cos(float(time)  * (2.0 * 3.14))
+                   0.0, cos(float(time)*RATE  * (2.0 * 3.14)), -sin(float(time)*RATE * (2.0 * 3.14)),
+                   0.0, sin(float(time)*RATE * (2.0 * 3.14)), cos(float(time)*RATE  * (2.0 * 3.14))
                    );
 
 float sphereSDF(vec3 samplePoint) {
