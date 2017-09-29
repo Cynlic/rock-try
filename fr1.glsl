@@ -15,7 +15,7 @@ const float RATE = 20.0;
 
 mat3 rotate = mat3(
                    1.0, 0.0, 0.0,
-                   0.0, cos(float(time)*RATE  * (2.0 * 3.14)), -sin(float(time)*RATE * (2.0 * 3.14)),
+                   0.0, cos(float(time)*RATE * (2.0 * 3.14)), -sin(float(time)*RATE * (2.0 * 3.14)),
                    0.0, sin(float(time)*RATE * (2.0 * 3.14)), cos(float(time)*RATE  * (2.0 * 3.14))
                    );
 
@@ -36,6 +36,15 @@ float sdfTorus(vec3 p, vec2 t){
   return length( vec2 (length (p.xz)-t.x, p.y)) - t.y;
 }
 
+vec3 displace(vec3 v){
+  return vec3(sin(RATE/4.0*v.x), sin(RATE/4.0*v.y), sin(RATE/4.0*v.z));
+}
+
+float displaceT(vec3 p, vec2 t){
+  float d1 = sdfTorus(p, t);
+  float d2 = sdfTorus(displace(p), t);
+  return  d1 - d2;
+}
 float sdfPlane(vec3 p){
   return p.y;
 }
@@ -50,13 +59,15 @@ float sceneSDF2(vec3 samplePoint){
 
 float sceneSDF(vec3 samplePoint){
   return min(
-              max(
-                  sdfTorus((samplePoint + vec3(0.0, -0.25, 0.0))* rotate ,
-                           vec2(0.3 ,0.1)),
-                   -cubeSDF(samplePoint -  vec3(0.0,- 0.30, -1.0))),
              
-              sdfPlane(samplePoint)
+             displaceT((samplePoint + vec3(0.0, 2.0 * cos(float(time)/RATE), (3.0+ 4.0* sin(float(time)/RATE)))) * rotate, vec2(0.3, 0.1)),
+                  //sdfTorus((samplePoint + vec3(0.0, -0.25, 0.0))* rotate ,  vec2(0.3 ,0.1)),
+
+             
+             sdfPlane(samplePoint)
              );
+
+  
 //sdfPlane(samplePoint * vec3(0.0, float(time)/100.0, float(time)/100.0)));
   //return sdfTorus(samplePoint*rotate, vec2(0.3, 0.1));
 }
@@ -129,14 +140,15 @@ void main() {
   vec3 dir = rayDirection(45.0, resolution, gl_FragCoord.xy);
   vec3 eye = vec3(0.0, 0.5, 5.0);
   float dist = shortestDistanceToSurface(eye, dir, MIN_DIST, MAX_DIST);
+  vec3 texture1 = texture2D(uSampler, vTextureCoord).xyz;
   if (dist > MAX_DIST - EPSILON){
-    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0);
+    gl_FragColor = vec4(0.0, 0.0, 1.0, 1.0)+ vec4(texture1, 1.0);
     return;
 }
 
   vec3 p = eye + dist * dir;
   vec3 K_a = vec3((dist)/10.0, 0.2, 1.0);
-  vec3 K_d = texture2D(uSampler, vTextureCoord).xyz;
+  vec3 K_d = texture1;
   vec3 K_s = vec3(1.0, 1.0, 1.0);
   float shininess = 2.0;
 
