@@ -35,13 +35,16 @@ function main(){
                 projectionMatrix: gl.getUniformLocation(shaderProgram, 'uProjectionMatrix'),
                 modelViewMatrix: gl.getUniformLocation(shaderProgram, 'uModelViewMatrix'),
                 uSampler: gl.getUniformLocation(shaderProgram, 'uSampler'),
+                uSampler2: gl.getUniformLocation(shaderProgram, 'uSampler2'),
                 resolution: gl.getUniformLocation(shaderProgram, 'resolution'),
                 time: gl.getUniformLocation(shaderProgram, 'time'),
             },
         };
         const buffers =  initBuffers(gl);
         var texture = loadTexture(gl, "jeeza.jpg");
+        var skyTex = loadTexture(gl, "jeeza.jpg");
         var video = setupVideo("vid2.mp4");
+        var skyVideo = setupVideo("sky.mp4");
         var then = 0.0;
         var time = 1;
 
@@ -52,9 +55,10 @@ function main(){
             time += 1;
             if (copyVideo){
                 updateTexture(gl, texture, video);
+                updateTexture(gl, skyTex, skyVideo);
             }
 
-            drawScene(gl, programInfo, buffers, texture, time);
+            drawScene(gl, programInfo, buffers, texture, skyTex,  time);
             requestAnimationFrame(render);
         }
         requestAnimationFrame(render);
@@ -150,8 +154,8 @@ function initBuffers(gl) {
     // Create its tex coords too.
     const texs = [
         0.0,  0.0,
-        1.0,  1.0,
         0.0,  1.0,
+        1.0,  1.0,
         1.0,  0.0,
     ];
 
@@ -176,7 +180,7 @@ function initBuffers(gl) {
     };
 }
 
-function drawScene(gl, programInfo, buffers, texture, time) {
+function drawScene(gl, programInfo, buffers, texture, skyTexture, time) {
   gl.clearColor(0.0, 0.0, 0.0, 1.0);  // Clear to black, fully opaque
   gl.clearDepth(1.0);                 // Clear everything
   gl.enable(gl.DEPTH_TEST);           // Enable depth testing
@@ -284,6 +288,10 @@ function drawScene(gl, programInfo, buffers, texture, time) {
 
     // Tell the shader we bound the texture to texture unit 0
     gl.uniform1i(programInfo.uniformLocations.uSampler, 0);
+
+    gl.activeTexture(gl.TEXTURE1);
+    gl.bindTexture(gl.TEXTURE_2D, skyTexture);
+    gl.uniform1i(programInfo.uniformLocations.uSampler2, 1);
 
   {
       const vertexCount = 6;
